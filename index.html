@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Ticketing System</title>
+    <link rel="stylesheet" href="public/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Web3.js for Ethereum interaction -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
+    <!-- ethers.js alternative -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <h1><i class="fas fa-ticket-alt"></i> BlockTicket</h1>
+        </div>
+        <nav class="header-nav">
+            <ul>
+                <li><a href="#" class="nav-link active" data-page="home"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="#" class="nav-link" data-page="create-wallet"><i class="fas fa-wallet"></i> Create Wallet</a></li>
+                <li><a href="#" class="nav-link" data-page="buy-tickets"><i class="fas fa-ticket-alt"></i> Buy Tickets</a></li>
+                <li><a href="#" class="nav-link" data-page="my-tickets"><i class="fas fa-clipboard-list"></i> My Tickets</a></li>
+            </ul>
+        </nav>
+        <div id="wallet-info">
+            <div id="wallet-options">
+                <button id="connect-web3" class="primary-btn">
+                    <i class="fas fa-wallet"></i> Connect Web3 Wallet
+                </button>
+            </div>
+            
+            <div id="web3-connect-form" class="hidden">
+                <div class="form-group">
+                    <label for="keystore-file">Keystore File:</label>
+                    <input type="file" id="keystore-file" accept=".json">
+                </div>
+                <div id="keystore-password-container" class="form-group hidden">
+                    <label for="keystore-password">Password:</label>
+                    <input type="password" id="keystore-password">
+                    <button onclick="connectWithKeystore()" class="primary-btn">
+                        Connect Wallet
+                    </button>
+                </div>
+            </div>
+            
+            <div id="account-info" class="hidden">
+                <span>Account: <span id="account-address">0x0000...0000</span></span>
+                <span>Network: <span id="network-name">Sepolia</span></span>
+            </div>
+        </div>
+    </header>
+
+    <div id="network-warning" class="warning hidden">
+        <i class="fas fa-exclamation-triangle"></i> Please connect to Sepolia Testnet to use this application.
+    </div>
+
+    <main>
+        <!-- Home Page -->
+        <section id="page-home" class="page-section">
+            <div class="card">
+                <h2><i class="fas fa-ticket-alt"></i> Welcome to BlockTicket</h2>
+                <div class="intro-content">
+                    <p>This decentralized application allows you to:</p>
+                    <ul>
+                        <li>Purchase event tickets using SETH</li>
+                        <li>Track your ticket ownership on the blockchain</li>
+                        <li>Transfer tickets to other attendees</li>
+                        <li>Verify ticket ownership at venues</li>
+                    </ul>
+                    <p>Get started by connecting your wallet and buying tickets for your favorite events!</p>
+                    
+                    <div class="action-buttons">
+                        <button id="home-buy-tickets" class="primary-btn"><i class="fas fa-shopping-cart"></i> Buy Tickets</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2><i class="fas fa-info-circle"></i> How It Works</h2>
+                <div class="intro-content">
+                    <p>Our blockchain ticketing system uses Ethereum smart contracts to create a transparent and secure way to buy, sell, and verify event tickets.</p>
+                    
+                    <div class="how-it-works">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h3>Connect Wallet</h3>
+                                <p>Link your MetaMask wallet to the application on the Sepolia testnet.</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h3>Buy Tickets</h3>
+                                <p>Purchase tickets using SETH.</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h3>Manage Tickets</h3>
+                                <p>View your tickets and transfer them to other users if needed.</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h3>Use Tickets</h3>
+                                <p>Venue staff can verify your ticket ownership using your wallet address.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Buy Tickets Page -->
+        <section id="page-buy-tickets" class="page-section hidden">
+            <div class="card">
+                <h2><i class="fas fa-shopping-cart"></i> Buy Tickets</h2>
+                
+                <div id="my-tickets" class="ticket-info-section hidden">
+                    <h3>Your Current Balance</h3>
+                    <div class="ticket-details">
+                        <p>You currently have <strong><span id="current-ticket-balance">0</span> <span class="token-symbol">TIX</span></strong> in your wallet.</p>
+                        <p>Price per ticket: <strong><span id="eth-price-per-ticket">0.00001 ETH</span></strong></p>
+                    </div>
+                </div>
+                
+                <!-- ETH Payment Form -->
+                <div id="eth-payment" class="payment-form">
+                    <h3><i class="fab fa-ethereum"></i> Pay with ETH</h3>
+                    <form id="buy-eth-form">
+                        <div class="form-group">
+                            <label for="eth-amount">ETH Amount:</label>
+                            <input type="number" id="eth-amount" step="0.000001" min="0.000001" placeholder="0.00001" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="eth-tickets-estimate">Estimated Tickets:</label>
+                            <input type="text" id="eth-tickets-estimate" readonly>
+                        </div>
+                        <button type="submit" class="primary-btn"><i class="fas fa-shopping-cart"></i> Buy Tickets</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+        
+        <!-- My Tickets Page -->
+        <section id="page-my-tickets" class="page-section hidden">
+            <div class="card">
+                <h2><i class="fas fa-clipboard-list"></i> My Tickets</h2>
+                
+                <div class="balance-card">
+                    <div class="balance-amount">
+                        <span id="user-ticket-balance">0</span>
+                        <span class="token-symbol">TIX</span>
+                    </div>
+                    <p class="balance-description">Your current ticket balance</p>
+                </div>
+                
+                <div class="role-selector">
+                    <p>Select your role:</p>
+                    <div class="role-buttons">
+                        <button class="role-btn active" data-role="attendee"><i class="fas fa-user"></i> Attendee</button>
+                        <button class="role-btn" data-role="doorman"><i class="fas fa-clipboard-check"></i> Doorman</button>
+                        <button class="role-btn" data-role="venue"><i class="fas fa-building"></i> Venue</button>
+                    </div>
+                </div>
+                
+                <!-- Attendee View -->
+                <div id="attendee-view">
+                    <div class="transfer-options">
+                        <p>Transfer your tickets:</p>
+                        <div class="transfer-toggle">
+                            <button class="transfer-btn active" data-transfer="user"><i class="fas fa-user"></i> To Another User</button>
+                            <button class="transfer-btn" data-transfer="vendor"><i class="fas fa-store"></i> Back to Vendor</button>
+                        </div>
+                    </div>
+                    
+                    <!-- User Transfer Form -->
+                    <div id="user-transfer" class="transfer-form">
+                        <h3><i class="fas fa-paper-plane"></i> Transfer to User</h3>
+                        <p class="info-text">Transfer your tickets to another wallet address.</p>
+                        <form id="transfer-user-form">
+                            <div class="form-group">
+                                <label for="recipient-address">Recipient Address:</label>
+                                <input type="text" id="recipient-address" placeholder="0x..." required>
+                            </div>
+                            <div class="form-group">
+                                <label for="transfer-amount">Number of Tickets:</label>
+                                <input type="number" id="transfer-amount" min="1" placeholder="1" required>
+                            </div>
+                            <button type="submit" class="primary-btn"><i class="fas fa-paper-plane"></i> Transfer</button>
+                        </form>
+                    </div>
+                    
+                    <!-- Vendor Transfer Form -->
+                    <div id="vendor-transfer" class="transfer-form hidden">
+                        <h3><i class="fas fa-undo"></i> Return to Vendor</h3>
+                        <p class="info-text">Return unused tickets back to the vendor.</p>
+                        <form id="transfer-vendor-form">
+                            <div class="form-group">
+                                <label for="vendor-transfer-amount">Number of Tickets:</label>
+                                <input type="number" id="vendor-transfer-amount" min="1" placeholder="1" required>
+                            </div>
+                            <button type="submit" class="primary-btn"><i class="fas fa-undo"></i> Return Tickets</button>
+                        </form>
+                    </div>
+                    
+                    <div class="ticket-list">
+                        <h3><i class="fas fa-ticket-alt"></i> Your Tickets</h3>
+                        <div id="attendee-ticket-list">
+                            <p class="info-message">Connect your wallet to view your tickets</p>
+                        </div>
+                    </div>
+                    
+                    <div class="transfer-history">
+                        <h3><i class="fas fa-history"></i> Recent Transfers</h3>
+                        <div id="transfer-history-list">
+                            <p class="loading-text">Loading transfer history...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Doorman View -->
+                <div id="doorman-view" class="hidden">
+                    <div class="verify-ticket">
+                        <h3><i class="fas fa-clipboard-check"></i> Verify Ticket Holder</h3>
+                        <p class="info-text">Enter a wallet address to verify if they own valid tickets.</p>
+                        <div class="form-group">
+                            <label for="ticket-address">Wallet Address:</label>
+                            <input type="text" id="ticket-address" placeholder="0x..." required>
+                        </div>
+                        <button id="verify-ticket-btn" class="primary-btn"><i class="fas fa-search"></i> Verify</button>
+                        
+                        <div id="verification-result" class="verification-result hidden">
+                            <!-- Results will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Venue View -->
+                <div id="venue-view" class="hidden">
+                    <div class="venue-stats">
+                        <div class="stat-card">
+                            <span class="stat-label">Total Supply</span>
+                            <div class="stat-value" id="total-token-supply">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">Tickets Sold</span>
+                            <div class="stat-value" id="tickets-sold">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">Available Tickets</span>
+                            <div class="stat-value" id="available-tickets">0</div>
+                        </div>
+                    </div>
+                    <div class="transaction-list">
+                        <h3><i class="fas fa-exchange-alt"></i> Recent Transactions</h3>
+                        <div id="recent-transactions">
+                            <p class="loading-text">Loading transactions...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Create Wallet Page -->
+        <section id="page-create-wallet" class="page-section hidden">
+            <div class="card">
+                <h2><i class="fas fa-wallet"></i> Create New Wallet</h2>
+                
+                <div id="wallet-creation-actions">
+                    <p>Create a new blockchain wallet that you can use to buy and manage tickets.</p>
+                    <div class="warning-box">
+                        <strong>Important:</strong> When you create a wallet, you'll receive a keystore file. This file contains your encrypted private key.
+                        <ul>
+                            <li>Keep this file safe and don't share it with anyone.</li>
+                            <li>You'll need this file and your password to access your wallet in the future.</li>
+                            <li>If you lose this file or password, you'll lose access to your tickets and funds.</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="wallet-password">Create Password:</label>
+                        <input type="password" id="wallet-password" placeholder="Enter a strong password for your wallet" required>
+                        <p class="input-hint">Your password should be at least 8 characters with letters, numbers, and symbols.</p>
+                    </div>
+                    
+                    <button id="generate-wallet-btn" class="primary-btn"><i class="fas fa-plus-circle"></i> Generate New Wallet</button>
+                </div>
+                
+                <div id="wallet-details" class="hidden">
+                    <h3>Your New Wallet Is Ready!</h3>
+                    
+                    <div class="wallet-info-item">
+                        <div class="label">Wallet Address:</div>
+                        <div class="value" id="new-wallet-address"></div>
+                        <button id="copy-address-btn" class="small-btn"><i class="fas fa-copy"></i> Copy</button>
+                    </div>
+                    
+                    <div class="warning-box">
+                        <strong>Important:</strong> Download your keystore file now. This is the only time you'll be able to download it.
+                    </div>
+                    
+                    <div class="wallet-actions">
+                        <button id="download-keystore-btn" class="primary-btn"><i class="fas fa-download"></i> Download Keystore</button>
+                        <button id="connect-new-wallet-btn" class="secondary-btn"><i class="fas fa-link"></i> Connect This Wallet</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <p>&copy; 2023 BlockTicket - A Blockchain Ticketing System</p>
+    </footer>
+    
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden">
+        <div class="spinner"></div>
+        <div id="loading-message">Processing...</div>
+    </div>
+    
+    <!-- Web3 and Contract JS -->
+    <script src="public/js/contract-abi.js"></script>
+    <script src="public/js/state.js"></script>
+    <script src="public/js/dom.js"></script>
+    <script src="public/js/ui.js"></script>
+    <script src="public/js/wallet.js"></script>
+    <script src="public/js/token.js"></script>
+    <script src="public/js/venue.js"></script>
+    <script src="public/js/events.js"></script>
+    <script src="public/js/app.js"></script>
+</body>
+</html> 
